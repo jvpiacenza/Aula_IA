@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🐉 Garchomp 3D — BabylonJS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@400;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue:    #1E3A6E;
+    --blue2:   #2a4f96;
+    --navy:    #0d1f3c;
+    --red:     #C8341A;
+    --red2:    #e84020;
+    --yellow:  #F5D030;
+    --bg:      #07080f;
+    --bg2:     #0e1020;
+    --card:    #141628;
+    --border:  #252848;
+    --text:    #e8eeff;
+    --muted:   #7080aa;
+    --glow:    rgba(30,58,110,0.4);
+  }
+
+  html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-serif; overflow-x:hidden; }
+
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(30,58,110,0.18) 0%, transparent 70%),
+      radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,0.5) 0%,transparent 100%),
+      radial-gradient(1px 1px at 38% 60%, rgba(255,255,255,0.4) 0%,transparent 100%),
+      radial-gradient(1px 1px at 62% 15%, rgba(255,255,255,0.6) 0%,transparent 100%),
+      radial-gradient(1.5px 1.5px at 80% 45%, rgba(255,255,255,0.5) 0%,transparent 100%),
+      radial-gradient(1px 1px at 93% 78%, rgba(255,255,255,0.4) 0%,transparent 100%),
+      radial-gradient(1px 1px at 7% 70%, rgba(255,255,255,0.5) 0%,transparent 100%),
+      radial-gradient(1px 1px at 50% 88%, rgba(255,255,255,0.3) 0%,transparent 100%);
+    pointer-events:none; z-index:0;
+  }
+
+  .layout { position:relative; z-index:1; min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; }
+
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px;
+    border-bottom:1px solid var(--border);
+    background:rgba(7,8,15,0.88);
+    backdrop-filter:blur(12px);
+  }
+
+  .logo {
+    font-family:'Press Start 2P',monospace; font-size:11px;
+    color:var(--blue2);
+    text-shadow:0 0 20px rgba(42,79,150,0.8);
+  }
+
+  .badge {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:999px; padding:6px 16px;
+    font-size:12px; color:var(--muted); display:flex; align-items:center; gap:8px;
+  }
+  .badge span { color:var(--blue2); font-weight:700; }
+
+  .types { display:flex; gap:8px; }
+  .type-pill {
+    display:inline-flex; align-items:center; gap:5px;
+    border-radius:999px; padding:4px 14px;
+    font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+  }
+  .type-dragon { background:rgba(30,58,110,0.25); border:1px solid rgba(42,79,150,0.5); color:#6aafff; }
+  .type-ground { background:rgba(180,120,40,0.2); border:1px solid rgba(200,140,60,0.4); color:#d4a050; }
+
+  main {
+    display:grid; grid-template-columns:1fr 360px; gap:0;
+    max-width:1200px; margin:0 auto; width:100%;
+    padding:32px 24px; align-items:start;
+  }
+
+  @media(max-width:900px){
+    main{grid-template-columns:1fr;}
+    .sidebar{order:-1;}
+  }
+
+  .canvas-wrap {
+    position:relative; border-radius:20px; overflow:hidden;
+    border:1px solid var(--border);
+    background:radial-gradient(ellipse at 50% 30%, #0f1a35 0%, #07080f 75%);
+    box-shadow:0 0 70px rgba(30,58,110,0.15), 0 0 0 1px rgba(42,79,150,0.08);
+    aspect-ratio:4/3;
+  }
+
+  #renderCanvas { width:100%; height:100%; touch-action:none; display:block; }
+
+  .canvas-overlay-top {
+    position:absolute; top:16px; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,0.7); backdrop-filter:blur(8px);
+    border:1px solid rgba(42,79,150,0.45);
+    border-radius:999px; padding:6px 22px;
+    font-family:'Press Start 2P',monospace; font-size:9px;
+    color:#6aafff; white-space:nowrap; pointer-events:none;
+  }
+
+  .canvas-overlay-bottom {
+    position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,0.5); border-radius:999px;
+    padding:5px 16px; font-size:11px; color:rgba(255,255,255,0.45);
+    white-space:nowrap; pointer-events:none;
+  }
+
+  .sidebar { padding-left:32px; display:flex; flex-direction:column; gap:16px; }
+  @media(max-width:900px){ .sidebar{padding-left:0;padding-bottom:24px;} }
+
+  .poke-name {
+    font-family:'Press Start 2P',monospace; font-size:20px;
+    color:#6aafff; text-shadow:0 0 28px rgba(42,79,150,0.6);
+    line-height:1.5;
+  }
+  .poke-number { font-size:14px; color:var(--muted); margin-top:4px; }
+
+  .divider { border:none; border-top:1px solid var(--border); }
+
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:18px 20px;
+  }
+  .card-title {
+    font-family:'Press Start 2P',monospace; font-size:9px;
+    color:var(--muted); margin-bottom:14px; letter-spacing:1px;
+  }
+
+  .stat-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .stat-row:last-child{margin-bottom:0;}
+  .stat-label { width:100px; font-size:13px; color:var(--muted); flex-shrink:0; font-weight:600; }
+  .stat-bar-wrap { flex:1; height:6px; background:rgba(255,255,255,0.06); border-radius:999px; overflow:hidden; }
+  .stat-bar {
+    height:100%; border-radius:999px;
+    animation:growBar 1.3s cubic-bezier(.4,0,.2,1) both;
+    transform-origin:left; transform:scaleX(0);
+  }
+  @keyframes growBar{ to{transform:scaleX(1);} }
+  .stat-val { width:34px; text-align:right; font-size:13px; font-weight:700; }
+
+  .desc { font-size:14px; color:var(--muted); line-height:1.75; }
+  .desc strong { color:var(--text); }
+
+  .controls-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ctrl-btn {
+    background:rgba(42,79,150,0.1); border:1px solid rgba(42,79,150,0.3);
+    border-radius:10px; padding:11px 8px; text-align:center; cursor:pointer;
+    transition:all .2s; font-size:12px; color:#6aafff;
+    font-family:'Rajdhani',sans-serif; font-weight:700;
+  }
+  .ctrl-btn:hover { background:rgba(42,79,150,0.22); border-color:rgba(42,79,150,0.6); transform:translateY(-2px); }
+  .ctrl-btn .icon { font-size:18px; display:block; margin-bottom:4px; }
+
+  .ability-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 0; border-bottom:1px solid var(--border);
+    font-size:13px;
+  }
+  .ability-row:last-child{border-bottom:none;}
+  .ability-name{font-weight:700; color:var(--text);}
+  .ability-tag{
+    font-size:10px; padding:3px 10px; border-radius:999px;
+    background:rgba(42,79,150,0.15); border:1px solid rgba(42,79,150,0.3);
+    color:#6aafff;
+  }
+
+  footer {
+    border-top:1px solid var(--border); padding:16px 32px;
+    display:flex; justify-content:center;
+    font-size:12px; color:var(--muted); gap:6px;
+  }
+  footer a{color:#6aafff;text-decoration:none;}
+
+  .canvas-wrap, .sidebar>* { animation:fadeUp .65s ease both; }
+  .sidebar>*:nth-child(1){animation-delay:.05s;}
+  .sidebar>*:nth-child(2){animation-delay:.1s;}
+  .sidebar>*:nth-child(3){animation-delay:.15s;}
+  .sidebar>*:nth-child(4){animation-delay:.2s;}
+  .sidebar>*:nth-child(5){animation-delay:.25s;}
+  .sidebar>*:nth-child(6){animation-delay:.3s;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <header>
+    <div class="logo">🐉 Pokédex 3D</div>
+    <div class="badge">Powered by <span>BabylonJS</span></div>
+    <div class="types">
+      <div class="type-pill type-dragon">🐉 Dragão</div>
+      <div class="type-pill type-ground">⛰ Terra</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="canvas-wrap">
+      <canvas id="renderCanvas"></canvas>
+      <div class="canvas-overlay-top">🐉 GARCHOMP — #445</div>
+      <div class="canvas-overlay-bottom">🖱 Arraste para orbitar · Scroll para zoom</div>
+    </div>
+
+    <div class="sidebar">
+      <div>
+        <div class="poke-name">GARCHOMP</div>
+        <div class="poke-number">#445 — Pokémon Mach</div>
+      </div>
+
+      <hr class="divider"/>
+
+      <div class="card">
+        <div class="card-title">// ESTATÍSTICAS BASE</div>
+        <div class="stat-row">
+          <div class="stat-label">HP</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:73%;background:#e84020;animation-delay:.3s"></div></div>
+          <div class="stat-val" style="color:#e84020">108</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Ataque</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:87%;background:#6aafff;animation-delay:.4s"></div></div>
+          <div class="stat-val" style="color:#6aafff">130</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Defesa</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:80%;background:#6aafff;animation-delay:.5s"></div></div>
+          <div class="stat-val" style="color:#6aafff">95</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Sp. Ataque</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:54%;background:#c070ff;animation-delay:.6s"></div></div>
+          <div class="stat-val" style="color:#c070ff">80</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Velocidade</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:88%;background:#F5D030;animation-delay:.7s"></div></div>
+          <div class="stat-val" style="color:#F5D030">102</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">// HABILIDADES</div>
+        <div class="ability-row">
+          <span class="ability-name">Sand Veil</span>
+          <span class="ability-tag">Habilidade</span>
+        </div>
+        <div class="ability-row">
+          <span class="ability-name">Rough Skin</span>
+          <span class="ability-tag">Oculta</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">// DESCRIÇÃO</div>
+        <p class="desc">
+          Voa a velocidades que superam <strong>Mach 2</strong>, mais rápido que um jato de caça.
+          Suas garras e presas são capazes de rasgar qualquer coisa. Considerado o
+          <strong>predador definitivo</strong> dos céus.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">// CONTROLES</div>
+        <div class="controls-grid">
+          <button class="ctrl-btn" onclick="toggleAura()">
+            <span class="icon">🌀</span> Aura
+          </button>
+          <button class="ctrl-btn" onclick="toggleAnim()">
+            <span class="icon">⏸</span> Pausar
+          </button>
+          <button class="ctrl-btn" onclick="zoomIn()">
+            <span class="icon">🔍</span> Zoom +
+          </button>
+          <button class="ctrl-btn" onclick="zoomOut()">
+            <span class="icon">🔎</span> Zoom −
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Construído com <a href="https://www.babylonjs.com/" target="_blank">BabylonJS</a> &nbsp;·&nbsp; Pokémon © Nintendo / Game Freak
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/babylonjs@6.44.0/babylon.js"></script>
+<script>
+const canvas = document.getElementById("renderCanvas");
+const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+
+let animPaused = false;
+let auraVisible = true;
+let camera, auraParticles = [], root;
+
+function mat(scene, hex, emissive=0, alpha=1) {
+  const m = new BABYLON.StandardMaterial("m"+Math.random(), scene);
+  const c = BABYLON.Color3.FromHexString(hex);
+  m.diffuseColor = c;
+  if (emissive>0) m.emissiveColor = c.scale(emissive);
+  m.specularColor = new BABYLON.Color3(0.4, 0.4, 0.5);
+  if (alpha < 1) { m.alpha = alpha; }
+  return m;
+}
+
+const scene = new BABYLON.Scene(engine);
+scene.clearColor = new BABYLON.Color4(0.027, 0.031, 0.059, 1);
+
+camera = new BABYLON.ArcRotateCamera("cam", -Math.PI/2.2, 1.15, 16, new BABYLON.Vector3(0, 1.5, 0), scene);
+camera.attachControl(canvas, true);
+camera.lowerRadiusLimit = 6;
+camera.upperRadiusLimit = 32;
+
+const hemi = new BABYLON.HemisphericLight("h", new BABYLON.Vector3(0,1,0), scene);
+hemi.intensity = 0.35;
+hemi.groundColor = new BABYLON.Color3(0.05, 0.05, 0.12);
+
+const pt1 = new BABYLON.PointLight("p1", new BABYLON.Vector3(6, 10, -6), scene);
+pt1.intensity = 1.4;
+pt1.diffuse = new BABYLON.Color3(0.6, 0.75, 1.0);
+
+const pt2 = new BABYLON.PointLight("p2", new BABYLON.Vector3(-6, 2, 5), scene);
+pt2.intensity = 0.7;
+pt2.diffuse = new BABYLON.Color3(0.8, 0.4, 0.2);
+
+const pt3 = new BABYLON.PointLight("p3", new BABYLON.Vector3(0, -2, 8), scene);
+pt3.intensity = 0.5;
+pt3.diffuse = new BABYLON.Color3(0.3, 0.5, 1.0);
+
+// Materials
+const navyMat   = mat(scene, "#1a2f60");
+const blueMat   = mat(scene, "#1E3A8A");
+const redMat    = mat(scene, "#C8341A");
+const red2Mat   = mat(scene, "#e84020", 0.1);
+const yellowMat = mat(scene, "#F5D030", 0.15);
+const blackMat  = mat(scene, "#0d0d1a");
+const darkBlue  = mat(scene, "#0d1a40");
+const finMat    = mat(scene, "#162555", 0.05);
+const clawMat   = mat(scene, "#c0c8e0");
+let auraMat     = mat(scene, "#2a5fc8", 0.6, 0.7);
+
+root = new BABYLON.TransformNode("root", scene);
+
+// ── TORSO (main body)
+const torso = BABYLON.MeshBuilder.CreateSphere("torso", {diameterX:3.0, diameterY:2.2, diameterZ:2.6, segments:16}, scene);
+torso.position.y = 0.5;
+torso.material = blueMat;
+torso.parent = root;
+
+// red belly
+const belly = BABYLON.MeshBuilder.CreateSphere("belly", {diameterX:1.8, diameterY:1.4, diameterZ:0.55, segments:14}, scene);
+belly.position.set(0, 0.2, 1.25);
+belly.material = red2Mat;
+belly.parent = root;
+
+// red chest star pattern (simple blobs)
+[-0.5,0,0.5].forEach((x,i) => {
+  const s = BABYLON.MeshBuilder.CreateSphere("cs"+i, {diameter:0.35,segments:8}, scene);
+  s.position.set(x, 0.9, 1.3);
+  s.material = red2Mat;
+  s.parent = root;
+});
+
+// ── HEAD (shark-like, elongated)
+const head = BABYLON.MeshBuilder.CreateSphere("head", {diameterX:2.4, diameterY:2.0, diameterZ:2.6, segments:16}, scene);
+head.position.set(0, 2.85, 0.2);
+head.material = blueMat;
+head.parent = root;
+
+// snout
+const snout = BABYLON.MeshBuilder.CreateCylinder("snout", {height:1.1, diameterTop:0.35, diameterBottom:0.9, tessellation:8}, scene);
+snout.rotation.x = Math.PI/2;
+snout.position.set(0, 2.55, 1.45);
+snout.material = blueMat;
+snout.parent = root;
+
+// lower jaw
+const jaw = BABYLON.MeshBuilder.CreateSphere("jaw", {diameterX:1.4, diameterY:0.55, diameterZ:1.1, segments:12}, scene);
+jaw.position.set(0, 2.15, 1.2);
+jaw.material = redMat;
+jaw.parent = root;
+
+// teeth row
+[-0.4,-0.15,0.15,0.4].forEach((x,i) => {
+  const tooth = BABYLON.MeshBuilder.CreateCylinder("th"+i, {height:0.28, diameterTop:0.02, diameterBottom:0.14, tessellation:6}, scene);
+  tooth.position.set(x, 2.18, 1.55);
+  tooth.material = clawMat;
+  tooth.parent = root;
+});
+
+// ── EYES
+function makeEye(side) {
+  const e = BABYLON.MeshBuilder.CreateSphere("eye"+side, {diameter:0.38, segments:10}, scene);
+  e.position.set(side*0.82, 3.0, 1.18);
+  e.material = yellowMat;
+  e.parent = root;
+  const pupil = BABYLON.MeshBuilder.CreateSphere("pu"+side, {diameter:0.2, segments:8}, scene);
+  pupil.position.set(side*0.88, 3.0, 1.3);
+  pupil.material = blackMat;
+  pupil.parent = root;
+}
+makeEye(-1); makeEye(1);
+
+// ── HEAD HORNS (two forward-swept blades — Garchomp's signature)
+function makeHeadHorn(side) {
+  const g = new BABYLON.TransformNode("hhorn"+side, scene);
+  g.parent = root;
+  // crescent-like horn using a scaled box
+  const horn = BABYLON.MeshBuilder.CreateBox("hh"+side, {width:0.22, height:1.0, depth:0.5}, scene);
+  horn.material = darkBlue;
+  horn.parent = g;
+  g.position.set(side*0.55, 3.85, 0.55);
+  g.rotation.z = side * 0.3;
+  g.rotation.x = -0.55;
+}
+makeHeadHorn(-1); makeHeadHorn(1);
+
+// ── NECK
+const neck = BABYLON.MeshBuilder.CreateCylinder("neck", {height:0.8, diameterTop:1.1, diameterBottom:1.4, tessellation:10}, scene);
+neck.position.set(0, 1.8, 0);
+neck.material = blueMat;
+neck.parent = root;
+
+// ── DORSAL FIN (back spine)
+const dorsalVerts = [
+  new BABYLON.Vector3(0, 0, 0),
+  new BABYLON.Vector3(0.12, 1.8, -0.3),
+  new BABYLON.Vector3(0.12, 1.4, -1.2),
+  new BABYLON.Vector3(0, 0.1, -1.4),
+];
+for (let i=0; i<3; i++) {
+  const fin = BABYLON.MeshBuilder.CreateBox("df"+i, {width:0.18, height:0.9-(i*0.2), depth:0.25}, scene);
+  fin.position.set(0, 2.0-(i*0.5), -0.9-(i*0.35));
+  fin.rotation.x = -0.4 + i*0.1;
+  fin.material = finMat;
+  fin.parent = root;
+}
+
+// ── WINGS / ARMS (scythe-shaped)
+function makeWing(side) {
+  const g = new BABYLON.TransformNode("wg"+side, scene);
+  g.parent = root;
+
+  // upper arm
+  const upper = BABYLON.MeshBuilder.CreateBox("wu"+side, {width:0.5, height:1.6, depth:0.35}, scene);
+  upper.material = blueMat;
+  upper.parent = g;
+
+  // wing blade (large flat swept shape)
+  const blade = BABYLON.MeshBuilder.CreateBox("wb"+side, {width:2.2, height:0.28, depth:1.1}, scene);
+  blade.position.set(side*1.0, -0.4, 0.1);
+  blade.rotation.z = side * 0.18;
+  blade.rotation.x = -0.2;
+  blade.material = darkBlue;
+  blade.parent = g;
+
+  // blade tip (swept claw)
+  const tip = BABYLON.MeshBuilder.CreateCylinder("wt"+side, {height:0.9, diameterTop:0.04, diameterBottom:0.22, tessellation:6}, scene);
+  tip.rotation.z = side * (Math.PI/2 - 0.3);
+  tip.position.set(side*2.2, -0.55, 0.2);
+  tip.material = clawMat;
+  tip.parent = g;
+
+  // red underside strip
+  const strip = BABYLON.MeshBuilder.CreateBox("ws"+side, {width:1.4, height:0.15, depth:0.6}, scene);
+  strip.position.set(side*0.7, -0.55, 0.15);
+  strip.material = red2Mat;
+  strip.parent = g;
+
+  g.position.set(side*1.7, 0.6, 0);
+  g.rotation.z = side * 0.28;
+}
+makeWing(-1); makeWing(1);
+
+// ── LOWER BODY / HIPS
+const hips = BABYLON.MeshBuilder.CreateSphere("hips", {diameterX:2.4, diameterY:1.8, diameterZ:2.2, segments:14}, scene);
+hips.position.y = -1.3;
+hips.material = blueMat;
+hips.parent = root;
+
+// ── LEGS
+function makeLeg(side) {
+  const thigh = BABYLON.MeshBuilder.CreateCylinder("th"+side, {height:1.2, diameterTop:0.7, diameterBottom:0.55, tessellation:8}, scene);
+  thigh.position.set(side*0.9, -2.2, 0.1);
+  thigh.rotation.z = side * 0.18;
+  thigh.material = blueMat;
+  thigh.parent = root;
+
+  const shin = BABYLON.MeshBuilder.CreateCylinder("sh"+side, {height:1.0, diameterTop:0.5, diameterBottom:0.35, tessellation:8}, scene);
+  shin.position.set(side*1.0, -3.1, 0.2);
+  shin.material = blueMat;
+  shin.parent = root;
+
+  // foot
+  const foot = BABYLON.MeshBuilder.CreateBox("ft"+side, {width:0.7, height:0.4, depth:1.0}, scene);
+  foot.position.set(side*1.05, -3.7, 0.45);
+  foot.material = blueMat;
+  foot.parent = root;
+
+  // claws
+  [-0.22, 0, 0.22].forEach((ox,ci) => {
+    const claw = BABYLON.MeshBuilder.CreateCylinder("cl"+side+ci, {height:0.45, diameterTop:0.02, diameterBottom:0.14, tessellation:6}, scene);
+    claw.position.set(side*1.05+ox, -3.9, 0.92);
+    claw.rotation.x = 0.5;
+    claw.material = clawMat;
+    claw.parent = root;
+  });
+}
+makeLeg(-1); makeLeg(1);
+
+// ── TAIL (thick, shark-like, with fin tip)
+const tailSegs = [
+  {p:[0,  -0.8, -1.6], s:[1.4,1.2,1.2], r:[0.35,0,0]},
+  {p:[0,  -0.5, -3.0], s:[1.0,0.9,0.9], r:[0.3,0,0]},
+  {p:[0,  -0.1, -4.2], s:[0.75,0.65,0.65], r:[0.2,0,0]},
+  {p:[0,   0.3, -5.2], s:[0.5,0.45,0.45], r:[0.1,0,0]},
+];
+tailSegs.forEach((ts,i) => {
+  const t = BABYLON.MeshBuilder.CreateSphere("ts"+i, {diameterX:ts.s[0], diameterY:ts.s[1], diameterZ:ts.s[2], segments:10}, scene);
+  t.position.set(...ts.p);
+  t.rotation.set(...ts.r);
+  t.material = blueMat;
+  t.parent = root;
+});
+
+// Tail fan fin (signature Garchomp)
+const tailFin = BABYLON.MeshBuilder.CreateBox("tfin", {width:0.2, height:1.4, depth:1.0}, scene);
+tailFin.position.set(0, 1.0, -5.3);
+tailFin.rotation.x = -0.2;
+tailFin.material = darkBlue;
+tailFin.parent = root;
+
+const tailFinL = BABYLON.MeshBuilder.CreateBox("tfinL", {width:0.9, height:0.22, depth:0.7}, scene);
+tailFinL.position.set(-0.6, 0.7, -5.2);
+tailFinL.rotation.z = 0.35;
+tailFinL.material = darkBlue;
+tailFinL.parent = root;
+
+const tailFinR = BABYLON.MeshBuilder.CreateBox("tfinR", {width:0.9, height:0.22, depth:0.7}, scene);
+tailFinR.position.set(0.6, 0.7, -5.2);
+tailFinR.rotation.z = -0.35;
+tailFinR.material = darkBlue;
+tailFinR.parent = root;
+
+// ── GROUND GLOW DISC
+const disc = BABYLON.MeshBuilder.CreateDisc("disc", {radius:3.5, tessellation:48}, scene);
+disc.rotation.x = Math.PI/2;
+disc.position.y = -4.1;
+const discM = new BABYLON.StandardMaterial("dm", scene);
+discM.diffuseColor = new BABYLON.Color3(0.04, 0.07, 0.18);
+discM.emissiveColor = new BABYLON.Color3(0.02, 0.05, 0.15);
+disc.material = discM;
+disc.parent = root;
+
+// ── AURA PARTICLES (dragon energy)
+for (let i=0; i<18; i++) {
+  const a = BABYLON.MeshBuilder.CreateSphere("au"+i, {diameter:0.1+Math.random()*0.15, segments:6}, scene);
+  a.material = auraMat;
+  a._off    = Math.random()*Math.PI*2;
+  a._radius = 2.5 + Math.random()*3.0;
+  a._speed  = 0.3 + Math.random()*0.5;
+  a._yBase  = -3 + Math.random()*6;
+  a._phase  = Math.random()*Math.PI*2;
+  auraParticles.push(a);
+}
+
+// ── ANIMATION
+let t = 0;
+scene.registerBeforeRender(() => {
+  if (animPaused) return;
+  t += engine.getDeltaTime() * 0.001;
+
+  // breathe + sway
+  root.position.y = Math.sin(t * 1.1) * 0.15;
+  root.rotation.y = Math.sin(t * 0.5) * 0.1;
+
+  // eye glow
+  yellowMat.emissiveColor = new BABYLON.Color3(
+    0.3 + 0.2*Math.sin(t*2.5),
+    0.25 + 0.15*Math.sin(t*2.5),
+    0.0
+  );
+
+  // aura orbit
+  auraParticles.forEach(a => {
+    const angle = a._off + t * a._speed;
+    a.position.x = Math.cos(angle) * a._radius;
+    a.position.z = Math.sin(angle) * a._radius;
+    a.position.y = a._yBase + Math.sin(t*0.9 + a._phase)*0.8;
+    a.rotation.y = t;
+    const pulse = 0.6 + 0.4*Math.sin(t*3 + a._off);
+    a.scaling.setAll(pulse);
+    a.isVisible = auraVisible;
+  });
+
+  // dorsal fin pulse
+  auraMat.emissiveColor = new BABYLON.Color3(
+    0.08 + 0.06*Math.sin(t*2),
+    0.2  + 0.1 *Math.sin(t*2),
+    0.6  + 0.3 *Math.sin(t*2)
+  );
+});
+
+engine.runRenderLoop(() => scene.render());
+window.addEventListener("resize", () => engine.resize());
+
+function toggleAura() {
+  auraVisible = !auraVisible;
+  const btn = document.querySelectorAll('.ctrl-btn')[0];
+  btn.innerHTML = `<span class="icon">${auraVisible?'🌀':'💤'}</span> ${auraVisible?'Aura':'Sem aura'}`;
+}
+function toggleAnim() {
+  animPaused = !animPaused;
+  const btn = document.querySelectorAll('.ctrl-btn')[1];
+  btn.innerHTML = `<span class="icon">${animPaused?'▶':'⏸'}</span> ${animPaused?'Retomar':'Pausar'}`;
+}
+function zoomIn()  { camera.radius = Math.max(camera.lowerRadiusLimit, camera.radius-2); }
+function zoomOut() { camera.radius = Math.min(camera.upperRadiusLimit, camera.radius+2); }
+</script>
+</body>
+</html>

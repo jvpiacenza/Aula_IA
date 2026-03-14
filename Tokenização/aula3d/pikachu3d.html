@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>⚡ Pikachu 3D — BabylonJS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;700;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --yellow: #F5C800;
+    --yellow-dark: #C89400;
+    --red: #E03030;
+    --black: #111;
+    --bg: #0a0a1c;
+    --bg2: #12122a;
+    --card: #1a1a38;
+    --border: #2a2a55;
+    --text: #f0f0ff;
+    --muted: #8888aa;
+    --glow: rgba(245,200,0,0.25);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Stars background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 10%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 85%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 45%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 82% 15%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 5% 50%, rgba(255,255,255,0.5) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .layout {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,28,0.85);
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    color: var(--yellow);
+    text-shadow: 0 0 16px var(--yellow-dark);
+    letter-spacing: 1px;
+  }
+
+  .badge {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .badge span { color: var(--yellow); font-weight: 700; }
+
+  .type-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(245,200,0,0.12);
+    border: 1px solid rgba(245,200,0,0.35);
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--yellow);
+    letter-spacing: 1px;
+  }
+
+  /* ─── MAIN ─── */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 32px 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .sidebar { order: -1; }
+  }
+
+  /* ─── CANVAS WRAPPER ─── */
+  .canvas-wrap {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: radial-gradient(ellipse at 50% 30%, #1a1a45 0%, #0a0a1c 70%);
+    box-shadow: 0 0 60px rgba(245,200,0,0.08), 0 0 0 1px rgba(245,200,0,0.06);
+    aspect-ratio: 4/3;
+  }
+
+  #renderCanvas {
+    width: 100%; height: 100%;
+    touch-action: none;
+    display: block;
+  }
+
+  .canvas-overlay-top {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(245,200,0,0.3);
+    border-radius: 999px;
+    padding: 6px 20px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--yellow);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .canvas-overlay-bottom {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.5);
+    border-radius: 999px;
+    padding: 5px 16px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    padding-left: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { padding-left: 0; padding-bottom: 24px; }
+  }
+
+  .poke-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: var(--yellow);
+    text-shadow: 0 0 24px rgba(245,200,0,0.4);
+    line-height: 1.4;
+  }
+
+  .poke-number {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+
+  .card-title {
+    font-size: 10px;
+    font-family: 'Press Start 2P', monospace;
+    color: var(--muted);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+
+  .stat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .stat-row:last-child { margin-bottom: 0; }
+
+  .stat-label {
+    width: 90px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .stat-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .stat-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--yellow);
+    animation: growBar 1.2s ease forwards;
+    transform-origin: left;
+    transform: scaleX(0);
+  }
+
+  @keyframes growBar {
+    to { transform: scaleX(1); }
+  }
+
+  .stat-val {
+    width: 28px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--yellow);
+  }
+
+  .desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .desc strong {
+    color: var(--text);
+  }
+
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .ctrl-btn {
+    background: rgba(245,200,0,0.08);
+    border: 1px solid rgba(245,200,0,0.25);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 11px;
+    color: var(--yellow);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+  }
+  .ctrl-btn:hover {
+    background: rgba(245,200,0,0.18);
+    border-color: rgba(245,200,0,0.5);
+    transform: translateY(-2px);
+  }
+  .ctrl-btn .icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--muted);
+    gap: 4px;
+  }
+  footer a { color: var(--yellow); text-decoration: none; }
+
+  /* Entrance animation */
+  .canvas-wrap, .sidebar > * {
+    animation: fadeUp 0.6s ease both;
+  }
+  .sidebar > *:nth-child(1) { animation-delay: 0.05s; }
+  .sidebar > *:nth-child(2) { animation-delay: 0.1s; }
+  .sidebar > *:nth-child(3) { animation-delay: 0.15s; }
+  .sidebar > *:nth-child(4) { animation-delay: 0.2s; }
+  .sidebar > *:nth-child(5) { animation-delay: 0.25s; }
+  .sidebar > *:nth-child(6) { animation-delay: 0.3s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">⚡ Pokédex 3D</div>
+    <div class="badge">Powered by <span>BabylonJS</span></div>
+    <div class="type-pill">⚡ ELÉTRICO</div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- 3D CANVAS -->
+    <div class="canvas-wrap">
+      <canvas id="renderCanvas"></canvas>
+      <div class="canvas-overlay-top">⚡ PIKACHU — #025</div>
+      <div class="canvas-overlay-bottom">🖱 Arraste para orbitar · Scroll para zoom</div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div>
+        <div class="poke-name">PIKACHU</div>
+        <div class="poke-number">#025 — Pokémon Rato</div>
+      </div>
+
+      <hr class="divider"/>
+
+      <div class="card">
+        <div class="card-title">// ESTATÍSTICAS BASE</div>
+        <div class="stat-row">
+          <div class="stat-label">HP</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:35%;animation-delay:0.3s"></div></div>
+          <div class="stat-val">35</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Ataque</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:55%;animation-delay:0.4s"></div></div>
+          <div class="stat-val">55</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Defesa</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:40%;animation-delay:0.5s"></div></div>
+          <div class="stat-val">40</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Sp. Ataque</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:50%;animation-delay:0.6s;background:#E03030"></div></div>
+          <div class="stat-val">50</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Velocidade</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:90%;animation-delay:0.7s;background:#4ae;"></div></div>
+          <div class="stat-val">90</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">// DESCRIÇÃO</div>
+        <p class="desc">
+          Quando vários Pikachu se reúnem, sua eletricidade pode causar <strong>relâmpagos</strong>.
+          As bochechas vermelhas armazenam <strong>eletricidade</strong> que é liberada quando
+          em perigo ou entusiasmado.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">// CONTROLES</div>
+        <div class="controls-grid">
+          <button class="ctrl-btn" onclick="toggleSparks()">
+            <span class="icon">✨</span> Faíscas
+          </button>
+          <button class="ctrl-btn" onclick="toggleAnim()">
+            <span class="icon">⏸</span> Pausar
+          </button>
+          <button class="ctrl-btn" onclick="zoomIn()">
+            <span class="icon">🔍</span> Zoom +
+          </button>
+          <button class="ctrl-btn" onclick="zoomOut()">
+            <span class="icon">🔎</span> Zoom −
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Construído com <a href="https://www.babylonjs.com/" target="_blank">BabylonJS</a> &nbsp;·&nbsp; Pokémon © Nintendo / Game Freak
+  </footer>
+</div>
+
+<!-- BabylonJS -->
+<script src="https://cdn.jsdelivr.net/npm/babylonjs@6.44.0/babylon.js"></script>
+<script>
+const canvas = document.getElementById("renderCanvas");
+const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+
+let sparksVisible = true;
+let animPaused = false;
+let camera, sparks = [], redMat, lightningMat, root;
+
+function mat(scene, hex, emissive = 0) {
+  const m = new BABYLON.StandardMaterial("m" + Math.random(), scene);
+  const c = BABYLON.Color3.FromHexString(hex);
+  m.diffuseColor = c;
+  if (emissive > 0) m.emissiveColor = c.scale(emissive);
+  m.specularColor = new BABYLON.Color3(0.25, 0.25, 0.25);
+  return m;
+}
+
+const scene = new BABYLON.Scene(engine);
+scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.1, 1);
+
+camera = new BABYLON.ArcRotateCamera("cam", -Math.PI / 2, 1.1, 14, new BABYLON.Vector3(0, 1, 0), scene);
+camera.attachControl(canvas, true);
+camera.lowerRadiusLimit = 5;
+camera.upperRadiusLimit = 30;
+
+const hemi = new BABYLON.HemisphericLight("h", new BABYLON.Vector3(0, 1, 0), scene);
+hemi.intensity = 0.45;
+hemi.groundColor = new BABYLON.Color3(0.05, 0.05, 0.2);
+
+const pt1 = new BABYLON.PointLight("p1", new BABYLON.Vector3(5, 9, -5), scene);
+pt1.intensity = 1.3;
+pt1.diffuse = new BABYLON.Color3(1, 0.95, 0.7);
+
+const pt2 = new BABYLON.PointLight("p2", new BABYLON.Vector3(-5, 2, 6), scene);
+pt2.intensity = 0.6;
+pt2.diffuse = new BABYLON.Color3(0.4, 0.6, 1);
+
+// Materials
+const yellow    = mat(scene, "#F5C800");
+const darkYel   = mat(scene, "#C89800");
+const blackMat  = mat(scene, "#1a1a1a");
+redMat          = mat(scene, "#E03030", 0.25);
+const whiteMat  = mat(scene, "#EEEEEE");
+const brownMat  = mat(scene, "#5C3A1E");
+lightningMat    = mat(scene, "#FFE033", 0.45);
+
+root = new BABYLON.TransformNode("root", scene);
+
+// Body
+const body = BABYLON.MeshBuilder.CreateSphere("body", {diameterX:2.6, diameterY:2.2, diameterZ:2.4, segments:18}, scene);
+body.position.y = 0;
+body.material = yellow;
+body.parent = root;
+
+// Belly
+const belly = BABYLON.MeshBuilder.CreateSphere("belly", {diameterX:1.45, diameterY:1.05, diameterZ:0.5, segments:12}, scene);
+belly.position.set(0, -0.28, 1.1);
+belly.material = darkYel;
+belly.parent = root;
+
+// Head
+const head = BABYLON.MeshBuilder.CreateSphere("head", {diameterX:2.85, diameterY:2.65, diameterZ:2.75, segments:18}, scene);
+head.position.y = 2.5;
+head.material = yellow;
+head.parent = root;
+
+// Ears
+function makeEar(side) {
+  const g = new BABYLON.TransformNode("eg"+side, scene);
+  g.parent = root;
+  const earY = BABYLON.MeshBuilder.CreateCylinder("earY"+side, {height:1.55, diameterTop:0.22, diameterBottom:0.56, tessellation:8}, scene);
+  earY.material = yellow;
+  earY.parent = g;
+  const tip = BABYLON.MeshBuilder.CreateCylinder("earT"+side, {height:0.72, diameterTop:0.04, diameterBottom:0.23, tessellation:8}, scene);
+  tip.position.y = 1.08;
+  tip.material = blackMat;
+  tip.parent = g;
+  g.position.set(side * 0.9, 4.08, -0.1);
+  g.rotation.z = side * 0.23;
+  g.rotation.x = -0.12;
+}
+makeEar(-1); makeEar(1);
+
+// Eyes
+function makeEye(side) {
+  const e = BABYLON.MeshBuilder.CreateSphere("eye"+side, {diameter:0.44, segments:10}, scene);
+  e.position.set(side*0.74, 2.7, 1.23);
+  e.material = blackMat;
+  e.parent = root;
+  const sh = BABYLON.MeshBuilder.CreateSphere("sh"+side, {diameter:0.15}, scene);
+  sh.position.set(side*0.8, 2.8, 1.38);
+  sh.material = whiteMat;
+  sh.parent = root;
+}
+makeEye(-1); makeEye(1);
+
+// Nose
+const nose = BABYLON.MeshBuilder.CreateSphere("nose", {diameter:0.18, segments:8}, scene);
+nose.position.set(0, 2.3, 1.34);
+nose.material = blackMat;
+nose.parent = root;
+
+// Mouth
+[-0.23, 0.23].forEach((x,i) => {
+  const m = BABYLON.MeshBuilder.CreateSphere("m"+i, {diameter:0.22}, scene);
+  m.position.set(x, 2.06, 1.31);
+  m.material = blackMat;
+  m.parent = root;
+});
+
+// Cheeks
+function makeCheek(side) {
+  const c = BABYLON.MeshBuilder.CreateSphere("ck"+side, {diameterX:0.72, diameterY:0.56, diameterZ:0.3, segments:10}, scene);
+  c.position.set(side*1.12, 2.26, 1.09);
+  c.material = redMat;
+  c.parent = root;
+}
+makeCheek(-1); makeCheek(1);
+
+// Arms
+function makeArm(side) {
+  const arm = BABYLON.MeshBuilder.CreateCylinder("arm"+side, {height:1.05, diameterTop:0.3, diameterBottom:0.44, tessellation:8}, scene);
+  arm.position.set(side*1.54, 0.14, 0.2);
+  arm.rotation.z = side * 1.1;
+  arm.rotation.x = 0.3;
+  arm.material = yellow;
+  arm.parent = root;
+  const hand = BABYLON.MeshBuilder.CreateSphere("hnd"+side, {diameter:0.46, segments:8}, scene);
+  hand.position.set(side*2.22, -0.37, 0.46);
+  hand.material = yellow;
+  hand.parent = root;
+}
+makeArm(-1); makeArm(1);
+
+// Legs
+function makeLeg(side) {
+  const leg = BABYLON.MeshBuilder.CreateCylinder("leg"+side, {height:0.92, diameterTop:0.5, diameterBottom:0.4, tessellation:8}, scene);
+  leg.position.set(side*0.7, -1.4, 0);
+  leg.material = yellow;
+  leg.parent = root;
+  const foot = BABYLON.MeshBuilder.CreateSphere("ft"+side, {diameterX:0.82, diameterY:0.38, diameterZ:0.92, segments:8}, scene);
+  foot.position.set(side*0.7, -2.02, 0.22);
+  foot.material = brownMat;
+  foot.parent = root;
+}
+makeLeg(-1); makeLeg(1);
+
+// Tail (lightning bolt)
+[
+  {p:[1.5,  0.3,  -1.0],  r:[0,  0.2, -0.6],  s:[0.9,0.32,0.32]},
+  {p:[2.2,  0.9,  -1.15], r:[0,  0.1, -0.3],  s:[0.9,0.32,0.32]},
+  {p:[2.75, 0.35, -1.2],  r:[0,  0.1,  0.6],  s:[0.9,0.32,0.32]},
+  {p:[3.3,  1.0,  -1.25], r:[0,  0.1, -0.5],  s:[0.8,0.30,0.30]},
+].forEach((s,i) => {
+  const t = BABYLON.MeshBuilder.CreateBox("t"+i, {width:s.s[0], height:s.s[1], depth:s.s[2]}, scene);
+  t.position.set(...s.p);
+  t.rotation.set(...s.r);
+  t.material = lightningMat;
+  t.parent = root;
+});
+
+// Ground disc
+const disc = BABYLON.MeshBuilder.CreateDisc("disc", {radius:2.8, tessellation:48}, scene);
+disc.rotation.x = Math.PI/2;
+disc.position.y = -2.17;
+const discM = new BABYLON.StandardMaterial("dm", scene);
+discM.diffuseColor = new BABYLON.Color3(0.06, 0.06, 0.18);
+discM.emissiveColor = new BABYLON.Color3(0.04, 0.04, 0.15);
+disc.material = discM;
+disc.parent = root;
+
+// Sparks
+for (let i = 0; i < 14; i++) {
+  const s = BABYLON.MeshBuilder.CreateBox("sp"+i, {size: 0.1 + Math.random()*0.12}, scene);
+  s.material = lightningMat;
+  s._off    = Math.random() * Math.PI * 2;
+  s._radius = 2.8 + Math.random() * 2.4;
+  s._speed  = 0.4 + Math.random() * 0.55;
+  s._yBase  = -1 + Math.random() * 4;
+  sparks.push(s);
+}
+
+// Render loop
+let t = 0;
+scene.registerBeforeRender(() => {
+  if (animPaused) return;
+  t += engine.getDeltaTime() * 0.001;
+
+  root.position.y = Math.sin(t * 1.6) * 0.18;
+  root.rotation.y = Math.sin(t * 0.65) * 0.12;
+
+  redMat.emissiveColor = new BABYLON.Color3(
+    0.45 + 0.3 * Math.sin(t * 3.2), 0.04, 0.04
+  );
+
+  sparks.forEach(s => {
+    const a = s._off + t * s._speed;
+    s.position.x = Math.cos(a) * s._radius;
+    s.position.z = Math.sin(a) * s._radius;
+    s.position.y = s._yBase + Math.sin(t * 1.2 + s._off) * 0.6;
+    s.rotation.x = t; s.rotation.z = t * 0.7;
+    const p = 0.65 + 0.35 * Math.sin(t * 4 + s._off);
+    s.scaling.setAll(p);
+    s.isVisible = sparksVisible;
+  });
+});
+
+engine.runRenderLoop(() => scene.render());
+window.addEventListener("resize", () => engine.resize());
+
+// Controls
+function toggleSparks() {
+  sparksVisible = !sparksVisible;
+  const btn = document.querySelectorAll('.ctrl-btn')[0];
+  btn.innerHTML = `<span class="icon">${sparksVisible ? '✨' : '💤'}</span> ${sparksVisible ? 'Faíscas' : 'Sem faísca'}`;
+}
+function toggleAnim() {
+  animPaused = !animPaused;
+  const btn = document.querySelectorAll('.ctrl-btn')[1];
+  btn.innerHTML = `<span class="icon">${animPaused ? '▶' : '⏸'}</span> ${animPaused ? 'Retomar' : 'Pausar'}`;
+}
+function zoomIn()  { camera.radius = Math.max(camera.lowerRadiusLimit, camera.radius - 2); }
+function zoomOut() { camera.radius = Math.min(camera.upperRadiusLimit, camera.radius + 2); }
+</script>
+</body>
+</html>
