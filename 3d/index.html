@@ -1433,63 +1433,49 @@
       status.textContent = '⏳ Carregando modelo...';
 
       try {
-        // Hide original root meshes
+        // 1. Esconde o Pokémon antigo feito de formas nativas
         if (root) root.getChildMeshes(false).forEach(m => { m.isVisible = false; });
 
-        // Split URL into rootUrl + filename for SceneLoader
+        // 2. Separa o link para o Babylon ler
         const li = url.lastIndexOf('/');
         const rootUrl = li >= 0 ? url.slice(0, li + 1) : '';
         const fname = li >= 0 ? url.slice(li + 1) : url;
 
+        // 3. Carrega o modelo
         const result = await BABYLON.SceneLoader.ImportMeshAsync('', rootUrl, fname, scene);
 
-        // --- ADICIONE ESTAS LINHAS ABAIXO ---
+        // 4. Pega o "Nó" principal que segura todas as partes do Pokémon
+        const loadedRoot = result.meshes[0];
 
-        // Pega o nó principal do modelo que acabou de carregar
-        const rootMesh = result.meshes[0];
+        // 5. Mágica de centralização e redimensionamento nativa do Babylon
+        loadedRoot.normalizeToUnitCube();
+        loadedRoot.scaling.scaleInPlace(8); // Tamanho ideal para a sua Pokédex
+        loadedRoot.position = BABYLON.Vector3.Zero(); // Crava no ponto 0,0,0
+        loadedRoot.position.y += 0.5; // Sobe um pouquinho para não cortar o pé
 
-        // 1. Magia do Babylon: redimensiona e centraliza o objeto automaticamente!
-        rootMesh.normalizeToUnitCube();
-
-        // 2. Coloca ele exatamente no centro do seu cenário (caso não tenha ido)
-        rootMesh.position = new BABYLON.Vector3(0, 0, 0);
-
-        // 3. Força a sua câmera a focar no modelo
-        if (camera) {
-          camera.setTarget(rootMesh);
+        // 6. APARIÇÃO DAS CORES (A luz de ambiente PBR)
+        // Sem isso, modelos .glb ficam escuros. Isso cria uma luz invisível que reflete as cores originais!
+        if (!scene.environmentTexture) {
+          scene.createDefaultEnvironment({
+            createSkybox: false,
+            createGround: false,
+            environmentTexture: "https://playground.babylonjs.com/textures/environment.dds"
+          });
         }
 
-
-
-        // Auto-fit the loaded model
-        const world = result.meshes.filter(m => m.getTotalVertices() > 0);
-        if (world.length > 0) {
-          world.forEach(m => m.computeWorldMatrix(true));
-          let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-          world.forEach(m => {
-            const bi = m.getBoundingInfo().boundingBox;
-            minX = Math.min(minX, bi.minimumWorld.x); minY = Math.min(minY, bi.minimumWorld.y); minZ = Math.min(minZ, bi.minimumWorld.z);
-            maxX = Math.max(maxX, bi.maximumWorld.x); maxY = Math.max(maxY, bi.maximumWorld.y); maxZ = Math.max(maxZ, bi.maximumWorld.z);
-          });
-          const h = maxY - minY || 1, w = maxX - minX || 1, d = maxZ - minZ || 1;
-          const maxDim = Math.max(h, w, d);
-          const targetSize = 9;
-          const sc2 = targetSize / maxDim;
-          const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
-          const wrapper = new BABYLON.TransformNode('glb_wrap', scene);
-          wrapper.scaling.setAll(sc2);
-          wrapper.position.set(-cx * sc2, -cy * sc2, -cz * sc2);
-          // Parent root-level meshes to wrapper
-          result.meshes.forEach(m => { if (!m.parent || !result.meshes.includes(m.parent)) { m.parent = wrapper; } });
+        // 7. Vira a câmera para o Pokémon
+        if (camera) {
+          camera.setTarget(BABYLON.Vector3.Zero());
+          camera.radius = 15;
         }
 
         status.style.color = '#60cc80';
-        status.textContent = '✅ Modelo carregado com sucesso!';
+        status.textContent = '✅ Carregado com sucesso!';
+
       } catch (e) {
-        if (root) root.getChildMeshes(false).forEach(m => { m.isVisible = true; });
         status.style.color = '#e84020';
-        status.textContent = '❌ Falha ao carregar. Verifique a URL e as permissões CORS do servidor.';
-        console.error('GLB load error:', e);
+        status.textContent = '❌ Erro ao carregar.';
+        console.error(e);
       }
     }
 
